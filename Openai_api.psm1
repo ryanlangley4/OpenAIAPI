@@ -252,7 +252,7 @@ function Invoke-AIQuery {
     }
 
     $url = "https://api.openai.com/v1/chat/completions"
-    $model = "gpt-4-1106-preview" # Updated to use the latest preview model
+    $model = "gpt-4-turbo" # Current model gpt-4-turbo
 
     # Construct the body of the request using a more structured approach
     $body = @{
@@ -322,7 +322,7 @@ function Invoke-AIImageQuery {
     }
 
     $base64_image = [Convert]::ToBase64String((Get-Content -Path $filename -Encoding Byte))
-    $model = "gpt-4-vision-preview"
+    $model = "gpt-4-turbo"
     $url = "https://api.openai.com/v1/chat/completions"
 
     # Construct the body of the request
@@ -451,6 +451,77 @@ function Invoke-AIImage {
         }
     } catch {
         Write-Error "Failed to retrieve response from OpenAI: $_"
+    }
+}
+
+<#
+.SYNOPSIS
+Generates spoken audio from text using OpenAI's Text-to-Speech API and saves it as an MP3 file.
+
+.DESCRIPTION
+This function sends a text input to OpenAI's TTS API, saves the generated speech as an MP3 file, and optionally plays the audio.
+
+.PARAMETER Text
+The text to be converted into speech.
+
+.PARAMETER Voice
+The voice to be used for speech generation. Default voices are alloy, echo, fable, onyx, nova, and shimmer. Randomly selected if not specified.
+
+.PARAMETER FilePath
+The file path where the audio should be saved.
+
+.PARAMETER PlayAudio
+Specifies whether to play the audio after it is saved. Defaults to False.
+
+.EXAMPLE
+Invoke-SpeechSynthesis -Text "Hello, world!" -Voice "echo" -FilePath ".\hello.mp3" -PlayAudio $true
+
+.NOTES
+Ensure that the API Token is set before using this function.
+#>
+function Invoke-SpeechSynthesis {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Text,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("alloy", "echo", "fable", "onyx", "nova", "shimmer")]
+        [string]$Voice = (Get-Random -InputObject @("alloy", "echo", "fable", "onyx", "nova", "shimmer")),
+
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$PlayAudio = $false
+    )
+
+    if (-not (Test-OpenAIKeys)) {
+        Write-Error "API Token and Organization ID must be set in the environment variables."
+        return
+    }
+
+    $headers = @{
+        "Authorization" = "Bearer $($env:OPENAI_API_TOKEN)"
+        "Content-Type" = "application/json"
+    }
+
+    $body = @{
+        model = "tts-1"
+        input = $Text
+        voice = $Voice
+    } | ConvertTo-Json
+
+    try {
+        Invoke-RestMethod -Uri "https://api.openai.com/v1/audio/speech" -Method Post -Headers $headers -Body $body -OutFile $FilePath
+        Write-Host "Audio file saved to $FilePath" -ForegroundColor Green
+
+        if ($PlayAudio) {
+            Write-Host "Playing audio file..." -ForegroundColor Yellow
+            Start-Process -FilePath $FilePath
+        }
+    } catch {
+        Write-Error "Failed to generate speech from text : $_"
     }
 }
 
