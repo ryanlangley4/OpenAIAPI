@@ -1,7 +1,7 @@
 # Module: OpenAI API Interaction
 # Description: This module provides functions to interact with OpenAI's API, including querying the GPT-4 model, generating images, and text-to-speech.
 # Author: Ryan Langley
-# Version: 1.0.0
+# Version: 0.0.1
 
 <#
 .SYNOPSIS
